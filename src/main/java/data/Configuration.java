@@ -7,15 +7,26 @@ import java.util.List;
  */
 public class Configuration
 {
-	List<String> modulePath;
+	List<Module> modules;
+	private String[] arguments;
 
-	public List<String> getModulePath()
+	public List<Module> getModules()
 	{
-		return modulePath;
+		return modules;
 	}
 
-	public void setModulePath(List<String> modulePath)
+	public void setModules(List<Module> modules)
 	{
-		this.modulePath = modulePath;
+		this.modules = modules;
+	}
+
+	public void setArguments(String[] arguments)
+	{
+		this.arguments = arguments;
+	}
+
+	public String[] getArguments()
+	{
+		return arguments;
 	}
 }

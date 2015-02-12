@@ -1,7 +1,16 @@
 {
-  "modulePath": [
-    "/Users/parth.mudgal/Documents/local/code/micro/css",
-    "/Users/parth.mudgal/Documents/local/code/micro/css-api",
-    "/Users/parth.mudgal/Documents/local/code/micro/service-common"
+  "modules": [
+    {
+      "name": "css",
+      "path": "/Users/parth.mudgal/Documents/local/code/micro/css"
+    },
+    {
+      "name": "css-api",
+      "path": "/Users/parth.mudgal/Documents/local/code/micro/css-api"
+    },
+    {
+      "name": "service-common",
+      "path": "/Users/parth.mudgal/Documents/local/code/micro/service-common"
+    }
   ]
 }
