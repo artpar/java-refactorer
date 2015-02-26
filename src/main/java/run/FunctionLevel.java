@@ -21,7 +21,7 @@ import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import data.Configuration;
-import data.Module;
+import refac.Module;
 
 /**
  * author parth.mudgal on 30/01/15.
@@ -33,11 +33,10 @@ public class FunctionLevel
 	private static final Map<String, List<String>> dependsOn = new HashMap<String, List<String>>();
 	private static final Map<String, List<String>> requiredBy = new HashMap<String, List<String>>();
 
-	public static void main(String[] args)
-	{
+	public static void main(String[] args) throws Exception {
 		checkArguments(args);
-		Configuration config = readConfigFile(args[0]);
-		for (Module m : config.getModules())
+		Configuration config = new Configuration(args[0]);
+		for (Module m : config.getModules().values())
 		{
 			getDependencyMap(m.getPath());
 		}
@@ -200,24 +199,6 @@ public class FunctionLevel
 		System.exit(1);
 	}
 
-	private static Configuration readConfigFile(String arg)
-	{
-		try
-		{
-			Configuration config = objectMapper.readValue(new File(arg), Configuration.class);
-			if (config.getModules() == null)
-			{
-				printError("List of module directories is not present");
-			}
-			return config;
-		}
-		catch (IOException e)
-		{
-			print("Failed to read the config file: " + arg);
-			System.exit(1);
-		}
-		return new Configuration();
-	}
 
 	private static void printHelp()
 	{

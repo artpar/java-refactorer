@@ -11,6 +11,10 @@
     {
       "name": "service-common",
       "path": "/Users/parth.mudgal/Documents/local/code/micro/service-common"
+    },
+    {
+      "name": "core",
+      "path": "/Users/parth.mudgal/Documents/local/code/core"
     }
   ]
 }

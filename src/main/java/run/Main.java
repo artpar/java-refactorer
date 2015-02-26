@@ -1,9 +1,5 @@
 package run;
 
-import java.io.File;
-import java.io.IOException;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import data.Actions;
 import data.Configuration;
 
@@ -13,7 +9,6 @@ import data.Configuration;
 public class Main extends Processor
 {
 
-	private static final ObjectMapper objectMapper = new ObjectMapper();
 	private final String[] args;
 
 	public Main(String[] args)
@@ -21,7 +16,7 @@ public class Main extends Processor
 		this.args = args;
 	}
 
-	public static void main(String[] args)
+	public static void main(String[] args) throws Exception
 	{
 
 		new Main(args).execute();
@@ -36,25 +31,6 @@ public class Main extends Processor
 		}
 	}
 
-	private Configuration readConfigFile(String configFilePath)
-	{
-		try
-		{
-			Configuration config = objectMapper.readValue(new File(configFilePath), Configuration.class);
-			if (config.getModules() == null)
-			{
-				printError("List of module directories is not present");
-			}
-			return config;
-		}
-		catch (IOException e)
-		{
-			printError("Failed to read the config file: " + configFilePath, e);
-			System.exit(1);
-		}
-		return new Configuration();
-	}
-
 	private void printHelp()
 	{
 		print("command <config_file> <action>\n" + "actions:\n");
@@ -66,12 +42,12 @@ public class Main extends Processor
 	}
 
 	@Override
-	public void execute()
+	public void execute() throws Exception
 	{
 
 		new Main(args);
 		checkArguments(args);
-		Configuration config = readConfigFile(args[0]);
+		Configuration config = new Configuration(args[0]);
 		config.setArguments(args);
 		String actionString = args[1];
 		Actions action = Actions.valueOf(actionString);
@@ -81,7 +57,7 @@ public class Main extends Processor
 		}
 		catch (Throwable e)
 		{
-			printError("Failed to instantiate class", e);
+			printError("Exception	", e);
 		}
 
 	}

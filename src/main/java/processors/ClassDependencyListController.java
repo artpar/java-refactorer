@@ -1,25 +1,14 @@
 package processors;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.io.FileUtils;
-
-import com.github.javaparser.JavaParser;
-import com.github.javaparser.ParseException;
-import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.ImportDeclaration;
-import com.github.javaparser.ast.PackageDeclaration;
-import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
-import com.github.javaparser.ast.body.EnumDeclaration;
-import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import data.Configuration;
-import data.Module;
+import refac.Module;
 import run.Processor;
 
 /**
@@ -38,13 +27,23 @@ public class ClassDependencyListController extends Processor
 	@Override
 	public void execute()
 	{
-		for (Module m : config.getModules())
+		for (Module m : config.getModules().values())
 		{
 			getDependencyMap(m.getPath());
 		}
 		removeUseless();
 
 		printDependencies(dependsOn);
+	}
+
+	public Map<String, List<String>> getDependsOn()
+	{
+		return dependsOn;
+	}
+
+	public Map<String, List<String>> getRequiredBy()
+	{
+		return requiredBy;
 	}
 
 	private void printDependencies(Map<String, List<String>> dependsOn)
@@ -83,33 +82,12 @@ public class ClassDependencyListController extends Processor
 
 	private void getDependencyMap(String modulePath)
 	{
-		if (modulePath.charAt(modulePath.length() - 1) != '/')
-		{
-			modulePath = modulePath + "/src/";
-		}
-		else
-		{
-			modulePath = modulePath + "src/";
-		}
-		Iterator<File> files = FileUtils.iterateFiles(new File(modulePath), new String[]{"java"}, true);
+		Iterator<File> files = getJavaFilesIterator(modulePath);
 		while (files.hasNext())
 		{
 			File file = files.next();
-			CompilationUnit cu = null;
-			try
-			{
-				cu = JavaParser.parse(file);
-			}
-			catch (ParseException e)
-			{
-				printError("Failed to parse the file: " + file.getAbsolutePath());
-			}
-			catch (IOException e)
-			{
-				printError("Failed to parse the file: " + file.getAbsolutePath());
-			}
 			final ImportVisitor importVisitor = new ImportVisitor();
-			importVisitor.visit(cu, null);
+			visitCompilationUnit(file, importVisitor);
 
 			if (importVisitor.getClassName() == null)
 			{
@@ -131,56 +109,4 @@ public class ClassDependencyListController extends Processor
 
 	}
 
-	private class ImportVisitor extends VoidVisitorAdapter
-	{
-		List<String> imports = new LinkedList<String>();
-		private String packageName;
-		private String className;
-
-		@Override
-		public void visit(PackageDeclaration n, Object arg)
-		{
-			packageName = n.getName().toString();
-		}
-
-		@Override
-		public void visit(ClassOrInterfaceDeclaration n, Object arg)
-		{
-			if (className == null)
-			{
-				className = n.getName();
-			}
-		}
-
-		@Override
-		public void visit(EnumDeclaration n, Object arg)
-		{
-			if (className == null)
-			{
-				className = n.getName();
-			}
-		}
-
-		@Override
-		public void visit(ImportDeclaration n, Object arg)
-		{
-			// print(n.getName().toString());
-			imports.add(n.getName().toString());
-		}
-
-		public List<String> getImports()
-		{
-			return imports;
-		}
-
-		public String getPackageName()
-		{
-			return packageName;
-		}
-
-		public String getClassName()
-		{
-			return className;
-		}
-	}
 }

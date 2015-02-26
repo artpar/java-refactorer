@@ -1,8 +1,8 @@
 {
-  "modules": [
-    {
+  "modules": {
+    "core": {
       "name": "core",
       "path": "/Users/parth.mudgal/Documents/local/code/core/"
     }
-  ]
+  }
 }
