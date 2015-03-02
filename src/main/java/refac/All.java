@@ -5,7 +5,8 @@ import java.util.List;
 import java.util.Map;
 
 import data.Configuration;
-import processors.ClassDependencyListController;
+import processors.ClassLevelDependencyListController;
+import processors.FunctionLevelDependencyListController;
 
 /**
  * author parth.mudgal on 26/02/15.
@@ -28,14 +29,15 @@ public class All
 			@Override
 			public void run()
 			{
-				final ClassDependencyListController classDependencyListController =
-				        new ClassDependencyListController(config);
-				classDependencyListController.execute();
-				AllRef.requiredBy = classDependencyListController.getRequiredBy();
-				AllRef.dependsOn = classDependencyListController.getDependsOn();
+				final ClassLevelDependencyListController classLevelDependencyListController =
+				        new ClassLevelDependencyListController(config);
+				classLevelDependencyListController.execute();
+				AllRef.requiredBy = classLevelDependencyListController.getRequiredBy();
+				AllRef.dependsOn = classLevelDependencyListController.getDependsOn();
 				AllRef.classLevelDependencyDone = true;
 			}
 		}).start();
+
 	}
 
 	public Module getModule(String name)
@@ -43,15 +45,34 @@ public class All
 		return projectList.get(name);
 	}
 
+
+	public String test()
+	{
+		new Thread(new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				final FunctionLevelDependencyListController functionLevelDependencyListController =
+				        new FunctionLevelDependencyListController(config);
+				functionLevelDependencyListController.execute();
+				AllRef.requiredBy = functionLevelDependencyListController.getRequiredBy();
+				AllRef.dependsOn = functionLevelDependencyListController.getDependsOn();
+				AllRef.classLevelDependencyDone = true;
+			}
+		}).start();
+		return "ok";
+	}
+
 	public Map<String, List<String>> getDependencyList()
 	{
 		if (!classLevelDependencyDone)
 		{
-			final ClassDependencyListController classDependencyListController =
-			        new ClassDependencyListController(config);
-			classDependencyListController.execute();
-			this.requiredBy = classDependencyListController.getRequiredBy();
-			this.dependsOn = classDependencyListController.getDependsOn();
+			final ClassLevelDependencyListController classLevelDependencyListController =
+			        new ClassLevelDependencyListController(config);
+			classLevelDependencyListController.execute();
+			this.requiredBy = classLevelDependencyListController.getRequiredBy();
+			this.dependsOn = classLevelDependencyListController.getDependsOn();
 			this.classLevelDependencyDone = true;
 		}
 
@@ -62,10 +83,10 @@ public class All
 	{
 		if (!classLevelDependencyDone)
 		{
-			final ClassDependencyListController classDependencyListController =
-			        new ClassDependencyListController(config);
-			this.requiredBy = classDependencyListController.getRequiredBy();
-			this.dependsOn = classDependencyListController.getDependsOn();
+			final ClassLevelDependencyListController classLevelDependencyListController =
+			        new ClassLevelDependencyListController(config);
+			this.requiredBy = classLevelDependencyListController.getRequiredBy();
+			this.dependsOn = classLevelDependencyListController.getDependsOn();
 			this.classLevelDependencyDone = true;
 		}
 		return this.requiredBy;

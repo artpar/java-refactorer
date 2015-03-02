@@ -2,12 +2,12 @@ package server;
 
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.ws.rs.GET;
@@ -41,6 +41,7 @@ public class HelloWorldResource
 	private final All all;
 	private String configFile;
 	private Random random = new Random(Calendar.getInstance().getTimeInMillis());
+	private int i = 1;
 
 	public HelloWorldResource(String configFile) throws Exception
 	{
@@ -57,7 +58,15 @@ public class HelloWorldResource
 		{
 			allMap.put(name, this.all);
 		}
-		return makeGraph(allMap.get(name).getRequiredBy());
+		return makeGraph(allMap.get(name).getRequiredBy(), allMap.get(name).getRequiredBy());
+	}
+
+	@GET
+	@Path ("test")
+	public String test()
+	{
+		all.test();
+		return "ok";
 	}
 
 	@GET
@@ -69,7 +78,7 @@ public class HelloWorldResource
 		{
 			start(name);
 		}
-		return makeGraph(allMap.get(name).getDependencyList());
+		return makeGraph(allMap.get(name).getDependencyList(), allMap.get(name).getRequiredBy());
 
 	}
 
@@ -81,11 +90,10 @@ public class HelloWorldResource
 		{
 			start(name);
 		}
-		return new Response("ok", makeGraph(allMap.get(name).getRequiredBy()));
+		return new Response("ok", makeGraph(allMap.get(name).getRequiredBy(), allMap.get(name).getRequiredBy()));
 	}
 
-
-	public String makeGraph(Map<String, List<String>> map) throws IOException
+	public String makeGraph(Map<String, List<String>> map1, Map<String, List<String>> map2) throws IOException
 	{
 		Gexf gexf = new GexfImpl();
 
@@ -104,63 +112,77 @@ public class HelloWorldResource
 
 		// ObservableGraph<String, String> jGraph = new ObservableGraph<String, String>();
 
-		List<Node> nodes = new ArrayList<Node>();
-		List<Edge> edges = new ArrayList<Edge>();
-		Map<Node, String> nodeToId = new HashMap<Node, String>();
-		Map<String, Node> idToNode = new HashMap<String, Node>();
 		Map<String, Node> keyToNode = new HashMap<String, Node>();
-		int i = 1;
-		String idStr = String.valueOf(i);
+		i = 1;
 
-
-		for (String key : map.keySet())
+		for (String key : map1.keySet())
 		{
 			Node fromNode;
-			if (!idToNode.containsKey(key))
+			if (!keyToNode.containsKey(key))
 			{
-				fromNode = graph.createNode(idStr);
-				fromNode.setLabel(key);
-				// jGraph.addVertex(key);
-				idToNode.put(idStr, fromNode);
-				nodeToId.put(fromNode, idStr);
-				nodes.add(fromNode);
-				fromNode.setPosition(new PositionImpl(nextFloatPos(), nextFloatPos(), nextFloatPos()));
-				fromNode.setColor(new ColorImpl(30, 100, 200));
-				fromNode.setSize(50f);
+				fromNode = makeNode(graph, key);
 				keyToNode.put(key, fromNode);
-				i++;
-				idStr = String.valueOf(i);
 			}
 
 			fromNode = keyToNode.get(key);
-			List<String> toList = map.get(key);
+			List<String> toList = map1.get(key);
 			for (String toNodeName : toList)
 			{
 				Node toNode;
-				if (!idToNode.containsKey(toNodeName))
+				if (!keyToNode.containsKey(toNodeName))
 				{
-					toNode = graph.createNode(idStr);
-					toNode.setLabel(toNodeName);
-					idToNode.put(idStr, toNode);
-					nodeToId.put(toNode, idStr);
-					nodes.add(toNode);
+					toNode = makeNode(graph, toNodeName);
 					keyToNode.put(toNodeName, toNode);
-					toNode.setPosition(new PositionImpl(nextFloatPos(), nextFloatPos(), nextFloatPos()));
-					toNode.setColor(new ColorImpl(30, 100, 200));
-					toNode.setSize(50f);
-					i++;
-					idStr = String.valueOf(i);
+
 				}
 				toNode = keyToNode.get(toNodeName);
-				fromNode.connectTo(toNode);
+				if (!fromNode.hasEdgeTo(toNode.getId()))
+				{
+
+					fromNode.connectTo(UUID.randomUUID().toString(), "depends on", EdgeType.DIRECTED, toNode);
+				}
 			}
 		}
 
+		for (String key : map2.keySet())
+		{
+			Node fromNode;
+			if (!keyToNode.containsKey(key))
+			{
+				fromNode = makeNode(graph, key);
+				keyToNode.put(key, fromNode);
+			}
 
+			fromNode = keyToNode.get(key);
+			List<String> toList = map1.get(key);
+			for (String toNodeName : toList)
+			{
+				Node toNode;
+				if (!keyToNode.containsKey(toNodeName))
+				{
+					toNode = makeNode(graph, toNodeName);
+					keyToNode.put(toNodeName, toNode);
 
+				}
+				toNode = keyToNode.get(toNodeName);
 
-
-
+				if (!fromNode.hasEdgeTo(toNode.getId()))
+				{
+					fromNode.connectTo(UUID.randomUUID().toString(), "required by", EdgeType.DIRECTED, toNode);
+				}
+				else
+				{
+					for (Edge edge : fromNode.getEdges())
+					{
+						if (edge.getTarget().equals(toNode))
+						{
+							edge.setLabel("depends and requires");
+							break;
+						}
+					}
+				}
+			}
+		}
 
 		StaxGraphWriter graphWriter = new StaxGraphWriter();
 		StringWriter stringWriter = new StringWriter();
@@ -169,6 +191,20 @@ public class HelloWorldResource
 
 		String outputXml = stringWriter.toString();
 		return outputXml;
+	}
+
+	public Node makeNode(Graph graph, String key)
+	{
+		String idStr = String.valueOf(i);
+		Node fromNode;
+		fromNode = graph.createNode(idStr);
+		fromNode.setLabel(key);
+		fromNode.setPosition(new PositionImpl(nextFloatPos(), nextFloatPos(), nextFloatPos()));
+		fromNode.setColor(new ColorImpl(30, 100, 200));
+		fromNode.setSize(50f);
+		i = i + 1;
+
+		return fromNode;
 	}
 
 	public float nextFloatPos()

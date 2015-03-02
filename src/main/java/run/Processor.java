@@ -10,7 +10,7 @@ import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParseException;
 import com.github.javaparser.ast.CompilationUnit;
 import data.Configuration;
-import processors.ImportVisitor;
+import processors.Visitor;
 
 /**
  * author parth.mudgal on 12/02/15.
@@ -52,16 +52,45 @@ public abstract class Processor
 	{
 		if (modulePath.charAt(modulePath.length() - 1) != '/')
 		{
-			modulePath = modulePath + "/src/";
+			modulePath = modulePath + "/src/main/";
 		}
 		else
 		{
-			modulePath = modulePath + "src/";
+			modulePath = modulePath + "src/main/";
 		}
-		return FileUtils.iterateFiles(new File(modulePath), new String[]{"java"}, true);
+		return FileUtils.iterateFiles(new File(modulePath), new String[]{".java"}, true);
+
+		// return FileUtils.iterateFiles(new File(modulePath), new IOFileFilter()
+		// {
+		// @Override
+		// public boolean accept(File file)
+		// {
+		// return file.getName().endsWith(".java") || file.getName().endsWith(".java");
+		// }
+		//
+		// @Override
+		// public boolean accept(File dir, String name)
+		// {
+		// return name.endsWith(".java") || name.endsWith(".java");
+		// }
+		// }, new IOFileFilter()
+		// {
+		// @Override
+		// public boolean accept(File file)
+		// {
+		// return true;
+		// }
+		//
+		// @Override
+		// public boolean accept(File dir, String name)
+		// {
+		// return true;
+		// }
+		// });
+
 	}
 
-	protected void visitCompilationUnit(File file, ImportVisitor importVisitor)
+	protected void visitCompilationUnit(File file, Visitor importVisitor)
 	{
 		CompilationUnit cu = getCompilationUnit(file);
 		importVisitor.visit(cu, null);

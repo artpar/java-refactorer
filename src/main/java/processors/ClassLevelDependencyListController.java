@@ -14,12 +14,12 @@ import run.Processor;
 /**
  * author parth.mudgal on 12/02/15.
  */
-public class ClassDependencyListController extends Processor
+public class ClassLevelDependencyListController extends Processor
 {
 	private final Map<String, List<String>> dependsOn = new HashMap<String, List<String>>();
 	private final Map<String, List<String>> requiredBy = new HashMap<String, List<String>>();
 
-	public ClassDependencyListController(Configuration config)
+	public ClassLevelDependencyListController(Configuration config)
 	{
 		super(config);
 	}

@@ -1,7 +1,7 @@
 package data;
 
 import processors.AdapterMethodToConstructorController;
-import processors.ClassDependencyListController;
+import processors.ClassLevelDependencyListController;
 import run.Processor;
 
 /**
@@ -9,7 +9,7 @@ import run.Processor;
  */
 public enum Actions
 {
-	ClassDependencyList(ClassDependencyListController.class), AdapterMethodToConstructor(
+	ClassDependencyList(ClassLevelDependencyListController.class), AdapterMethodToConstructor(
 	    AdapterMethodToConstructorController.class);
 	private Class<? extends Processor> controllerClass;
 

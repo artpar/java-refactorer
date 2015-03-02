@@ -7,13 +7,11 @@ import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.PackageDeclaration;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.EnumDeclaration;
-import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 
 /**
  * author parth.mudgal on 12/02/15.
  */
-public class ImportVisitor extends VoidVisitorAdapter
-{
+public class ImportVisitor extends Visitor {
 	List<String> imports = new LinkedList<String>();
 	private String packageName;
 	private String className;
