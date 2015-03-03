@@ -33,7 +33,8 @@ public class ClassLevelDependencyListController extends Processor
 		}
 		removeUseless();
 
-		printDependencies(dependsOn);
+		print("done print class level");
+//		printDependencies(dependsOn);
 	}
 
 	public Map<String, List<String>> getDependsOn()

@@ -31,14 +31,36 @@ public class FunctionLevelDependencyListController extends Processor
 	@Override
 	public void execute()
 	{
+		methodMap = new HashMap<String, String>();
+		classesExplored = new LinkedList<String>();
 		for (Module m : config.getModules().values())
 		{
 			getMethodReturnTypeMap(m.getPath());
+		}
+		for (Module m : config.getModules().values())
+		{
 			getDependencyMap(m.getPath());
 		}
-		// removeUseless();
 
-		printDependencies(dependsOn);
+		Set<String> parents = dependsOn.keySet();
+
+		for (String parent : parents)
+		{
+			List<String> requires = dependsOn.get(parent);
+			for (String require : requires)
+			{
+				if (requiredBy.get(require) == null)
+				{
+					requiredBy.put(require, new LinkedList<String>());
+				}
+				requiredBy.get(require).add(parent);
+			}
+
+		}
+		removeUseless();
+
+		print("Done extracting function level");
+		// printDependencies(dependsOn);
 	}
 
 	public Map<String, List<String>> getDependsOn()
@@ -100,7 +122,6 @@ public class FunctionLevelDependencyListController extends Processor
 	private void getDependencyMap(String modulePath)
 	{
 		Iterator<File> files = getJavaFilesIterator(modulePath);
-		classesExplored = new LinkedList<String>();
 		while (files.hasNext())
 		{
 			File file = files.next();
@@ -109,30 +130,12 @@ public class FunctionLevelDependencyListController extends Processor
 
 			dependsOn.putAll(visitor.getDependsMap());
 			final Collection<? extends String> allClasses = visitor.getAllClasses();
-			classesExplored.addAll(allClasses);
 		}
 
-		Set<String> parents = dependsOn.keySet();
-
-		for (String parent : parents)
-		{
-			List<String> requires = dependsOn.get(parent);
-			for (String require : requires)
-			{
-				if (requiredBy.get(require) == null)
-				{
-					requiredBy.put(require, new LinkedList<String>());
-				}
-				requiredBy.get(require).add(parent);
-			}
-
-		}
-		removeUseless();
 	}
 
 	private void getMethodReturnTypeMap(String modulePath)
 	{
-		methodMap = new HashMap<String, String>();
 		Iterator<File> files = getJavaFilesIterator(modulePath);
 		while (files.hasNext())
 		{
@@ -141,7 +144,7 @@ public class FunctionLevelDependencyListController extends Processor
 			visitCompilationUnit(file, visitor);
 
 			methodMap.putAll(visitor.getMethodToReturnType());
-
+			classesExplored.addAll(visitor.getClasses());
 		}
 	}
 

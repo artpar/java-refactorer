@@ -58,7 +58,7 @@ public abstract class Processor
 		{
 			modulePath = modulePath + "src/main/";
 		}
-		return FileUtils.iterateFiles(new File(modulePath), new String[]{".java"}, true);
+		return FileUtils.iterateFiles(new File(modulePath), new String[]{"java"}, true);
 
 		// return FileUtils.iterateFiles(new File(modulePath), new IOFileFilter()
 		// {

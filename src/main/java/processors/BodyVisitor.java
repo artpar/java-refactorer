@@ -17,15 +17,33 @@ import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.Parameter;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.ast.body.VariableDeclarator;
+import com.github.javaparser.ast.expr.ArrayAccessExpr;
+import com.github.javaparser.ast.expr.AssignExpr;
+import com.github.javaparser.ast.expr.BinaryExpr;
+import com.github.javaparser.ast.expr.BooleanLiteralExpr;
+import com.github.javaparser.ast.expr.CastExpr;
+import com.github.javaparser.ast.expr.CharLiteralExpr;
+import com.github.javaparser.ast.expr.ConditionalExpr;
+import com.github.javaparser.ast.expr.EnclosedExpr;
 import com.github.javaparser.ast.expr.Expression;
+import com.github.javaparser.ast.expr.FieldAccessExpr;
+import com.github.javaparser.ast.expr.InstanceOfExpr;
+import com.github.javaparser.ast.expr.IntegerLiteralExpr;
 import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.expr.NameExpr;
+import com.github.javaparser.ast.expr.NullLiteralExpr;
+import com.github.javaparser.ast.expr.ObjectCreationExpr;
 import com.github.javaparser.ast.expr.StringLiteralExpr;
+import com.github.javaparser.ast.expr.SuperExpr;
+import com.github.javaparser.ast.expr.ThisExpr;
+import com.github.javaparser.ast.expr.UnaryExpr;
 import com.github.javaparser.ast.expr.VariableDeclarationExpr;
 import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.stmt.ExpressionStmt;
+import com.github.javaparser.ast.stmt.IfStmt;
 import com.github.javaparser.ast.stmt.Statement;
 import com.github.javaparser.ast.stmt.TryStmt;
+import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.PrimitiveType;
 import com.github.javaparser.ast.type.ReferenceType;
 import com.github.javaparser.ast.type.Type;
@@ -154,114 +172,300 @@ public class BodyVisitor extends Visitor
 		}
 		for (Statement statement : blockStmt.getStmts())
 		{
-			if (statement.getClass().equals(ExpressionStmt.class))
+			evaluateStatement(statement, thisParent);
+		}
+	}
+
+	private void evaluateStatement(Statement statement, String thisParent)
+	{
+		if (statement.getClass().equals(ExpressionStmt.class))
+		{
+			visitExpressionStmt((ExpressionStmt) statement, thisParent);
+		}
+		else if (statement.getClass().equals(TryStmt.class))
+		{
+			TryStmt tryStmt = (TryStmt) statement;
+			visitBlockStatements(tryStmt.getTryBlock(), thisParent);
+			visitBlockStatements(tryStmt.getFinallyBlock(), thisParent);
+		}
+		else if (statement.getClass().equals(IfStmt.class))
+		{
+			IfStmt ifStmt = (IfStmt) statement;
+			evaluateExpression(ifStmt.getCondition(), thisParent);
+			final Statement thenStmt = ifStmt.getThenStmt();
+			if (thenStmt != null && thenStmt.getClass().equals(BlockStmt.class))
 			{
-				visitExpressionStmt((ExpressionStmt) statement, thisParent);
+				visitBlockStatements((BlockStmt) thenStmt, thisParent);
 			}
-			else if (statement.getClass().equals(TryStmt.class))
+			else if (thenStmt != null)
 			{
-				TryStmt tryStmt = (TryStmt) statement;
-				visitBlockStatements(tryStmt.getTryBlock(), thisParent);
-				visitBlockStatements(tryStmt.getFinallyBlock(), thisParent);
+				evaluateStatement(thenStmt, thisParent);
 			}
+
+			final Statement elseStmt = ifStmt.getElseStmt();
+			if (elseStmt != null && elseStmt.getClass().equals(BlockStmt.class))
+			{
+				visitBlockStatements((BlockStmt) elseStmt, thisParent);
+			}
+			else if (elseStmt != null)
+			{
+				evaluateStatement(elseStmt, thisParent);
+			}
+
 		}
 	}
 
 	private void visitExpressionStmt(ExpressionStmt statement, String thisParent)
 	{
 		Expression expression = statement.getExpression();
-		if (expression.getClass().equals(VariableDeclarationExpr.class))
-		{
-			VariableDeclarationExpr variableDeceleration = (VariableDeclarationExpr) expression;
-			visitVariableDeclarationExpr(variableDeceleration, thisParent);
-		}
-		else if (expression.getClass().equals(MethodCallExpr.class))
-		{
-			visitMethodCallExpression((MethodCallExpr) expression, thisParent);
-		}
+		final Class<? extends Expression> expressionClass = expression.getClass();
+		evaluateExpression(expression, thisParent);
+
 	}
 
-	private void visitMethodCallExpression(MethodCallExpr expression, String thisParent)
+	private void evaluateExpression(Expression originalExpression, String thisParent)
 	{
 
-		String scope = "";
-		if (expression.getScope() == null)
-		{
-			return;
-		}
-		if (expression.getScope().getClass().equals(MethodCallExpr.class))
-		{
-			final MethodCallExpr methodCallScope = (MethodCallExpr) expression.getScope();
+		final Class<? extends Expression> originalExpressionClass = originalExpression.getClass();
 
-			visitMethodCallExpression(methodCallScope, thisParent);
+		if (originalExpressionClass.equals(VariableDeclarationExpr.class))
+		{
+			String variableTypeName = "";
+			VariableDeclarationExpr variableDeceleration = (VariableDeclarationExpr) originalExpression;
+			if (variableDeceleration.getType().getClass().equals(PrimitiveType.class))
+			{
+				PrimitiveType type = (PrimitiveType) variableDeceleration.getType();
+				variableTypeName = type.getType().toString();
+			}
+			else
+			{
+				ReferenceType type = (ReferenceType) variableDeceleration.getType();
+				variableTypeName = type.getType().toString();
+			}
 
-			scope =
-			        classNameToPackageName.get(methodCallScope.getScope().toString()) + "."
-			                + methodCallScope.getScope() + "." + methodCallScope.getName();
-		}
-		else
-		{
-			scope = ((NameExpr) expression.getScope()).getName();
-			// scope = variableTypeMap.get(scope);
-		}
+			String qualifiedClassName = null;
+			if (classNameToPackageName.containsKey(variableTypeName))
+			{
+				qualifiedClassName = classNameToPackageName.get(variableTypeName) + "." + variableTypeName;
+			}
 
-		String qualifiedScope = "";
-		if (classNameToPackageName.get(scope) != null)
-		{
-			scope = classNameToPackageName.get(scope) + "." + scope;
+			// TODO: do we want function to class dependency ?
+			// addDepends(thisParent, qualifiedClassName);
+			for (VariableDeclarator variableDeclarator : variableDeceleration.getVars())
+			{
+				// LHS of the declaration
+				String variableName = variableDeclarator.getId().getName();
+				variableTypeMap.put(variableName, qualifiedClassName);
+
+				// RHS of the declaration
+				visitVariableDecelerator(variableDeclarator, thisParent);
+			}
 		}
-		else if (variableTypeMap.get(scope) != null)
+		else if (originalExpressionClass.equals(MethodCallExpr.class))
 		{
-			scope = variableTypeMap.get(scope);
+			MethodCallExpr expression = (MethodCallExpr) originalExpression;
+			String scope = "";
+			if (expression.getScope() == null)
+			{
+				return;
+			}
+			scope = evaluateScopeToString(expression.getScope(), thisParent);
+
 			if (classNameToPackageName.get(scope) != null)
 			{
 				scope = classNameToPackageName.get(scope) + "." + scope;
 			}
+			else if (variableTypeMap.get(scope) != null)
+			{
+				scope = variableTypeMap.get(scope);
+				if (classNameToPackageName.get(scope) != null)
+				{
+					scope = classNameToPackageName.get(scope) + "." + scope;
+				}
+			}
+			else
+			{
+				// i don't know this type
+			}
+			final String fullyQualifiedMethodCall = scope + "." + expression.getName();
+			addDepends(thisParent, fullyQualifiedMethodCall);
+			variableTypeMap.put(fullyQualifiedMethodCall, methodReturnTypeMap.get(fullyQualifiedMethodCall));
+			variableTypeMap.put(expression.getScope() + "." + expression.getName(),
+					methodReturnTypeMap.get(fullyQualifiedMethodCall));
+		}
+		else if (originalExpressionClass.equals(BinaryExpr.class))
+		{
+			BinaryExpr binaryExpr = (BinaryExpr) originalExpression;
+			evaluateExpression(binaryExpr.getLeft(), thisParent);
+			evaluateExpression(binaryExpr.getRight(), thisParent);
+		}
+		else if (originalExpressionClass.equals(AssignExpr.class))
+		{
+			AssignExpr assignExpress = (AssignExpr) originalExpression;
+			Expression target = assignExpress.getTarget();
+			Expression value = assignExpress.getValue();
+			evaluateExpression(value, thisParent);
+		}
+		else if (originalExpressionClass.equals(AssignExpr.class))
+		{
+			AssignExpr assignExpression = (AssignExpr) originalExpression;
+			evaluateExpression(assignExpression.getValue(), thisParent);
+		}
+		else if (originalExpressionClass.equals(NameExpr.class))
+		{
+			// do nothing
+			// System.out.println("Skipping - [" + originalExpressionClass + "] - " + originalExpression.toString());
+		}
+		else if (originalExpressionClass.equals(UnaryExpr.class))
+		{
+			// do nothing
+		}
+		else if (originalExpressionClass.equals(EnclosedExpr.class))
+		{
+			EnclosedExpr excExpression = (EnclosedExpr) originalExpression;
+			evaluateExpression(excExpression.getInner(), thisParent);
+		}
+		else if (originalExpressionClass.equals(StringLiteralExpr.class))
+		{
+			// do nothing
+		}
+		else if (originalExpressionClass.equals(IntegerLiteralExpr.class))
+		{
+			// do nothing
+		}
+		else if (originalExpressionClass.equals(BooleanLiteralExpr.class))
+		{
+			// do nothing
+		}
+		else if (originalExpressionClass.equals(NullLiteralExpr.class))
+		{
+			// do nothing
+		}
+		else if (originalExpressionClass.equals(InstanceOfExpr.class))
+		{
+			// do nothing
+		}
+		else if (originalExpressionClass.equals(ArrayAccessExpr.class))
+		{
+			// do nothing
+		}
+		else if (originalExpressionClass.equals(ThisExpr.class))
+		{
+			// do nothing
+		}
+		else if (originalExpressionClass.equals(CharLiteralExpr.class))
+		{
+			// do nothing
+		}
+		else if (originalExpressionClass.equals(CastExpr.class))
+		{
+			CastExpr castExpr = (CastExpr) originalExpression;
+			evaluateExpression(castExpr.getExpr(), thisParent);
+		}
+		else if (originalExpressionClass.equals(ConditionalExpr.class))
+		{
+			ConditionalExpr conditionalExpr = (ConditionalExpr) originalExpression;
+			evaluateExpression(conditionalExpr.getCondition(), thisParent);
+			evaluateExpression(conditionalExpr.getElseExpr(), thisParent);
+			evaluateExpression(conditionalExpr.getThenExpr(), thisParent);
+		}
+		else if (originalExpressionClass.equals(FieldAccessExpr.class))
+		{
+			// do nothing
+		}
+		else if (originalExpressionClass.equals(ObjectCreationExpr.class))
+		{
+			ObjectCreationExpr objectCreationExpr = (ObjectCreationExpr) originalExpression;
+			if (objectCreationExpr.getArgs() != null)
+			{
+
+				for (Expression expression : objectCreationExpr.getArgs())
+				{
+					evaluateExpression(expression, thisParent);
+				}
+			}
 		}
 		else
 		{
-			// i don't know this type
+			System.out.println("How to do this - [" + originalExpressionClass + "] - " + originalExpression.toString());
 		}
-		final String fullyQualifiedMethodCall = scope + "." + expression.getName();
-		addDepends(thisParent, fullyQualifiedMethodCall);
-		variableTypeMap.put(fullyQualifiedMethodCall, methodReturnTypeMap.get(fullyQualifiedMethodCall));
-		variableTypeMap.put(expression.getScope() + "." + expression.getName(),
-		        methodReturnTypeMap.get(fullyQualifiedMethodCall));
 
+	}
+
+	private String evaluateScopeToString(Expression scopeExpression, String thisParent)
+	{
+		String scope;
+		// final Expression scopeExpression = scopeExpression.getScope();
+		if (scopeExpression.getClass().equals(MethodCallExpr.class))
+		{
+			final MethodCallExpr methodCallScope = (MethodCallExpr) scopeExpression;
+
+			evaluateExpression(methodCallScope, thisParent);
+
+			final Expression methodCallScopeScope = methodCallScope.getScope();
+			if (methodCallScopeScope == null)
+			{
+				scope = thisClassName + "." + methodCallScope.getName();
+			}
+			else
+			{
+
+				scope =
+				        classNameToPackageName.get(methodCallScopeScope.toString()) + "." + methodCallScopeScope + "."
+				                + methodCallScope.getName();
+			}
+		}
+
+		else if (scopeExpression.getClass().equals(FieldAccessExpr.class))
+		{
+			scope = scopeExpression.toString();
+		}
+		else if (scopeExpression.getClass().equals(ObjectCreationExpr.class))
+		{
+			final ObjectCreationExpr objectCreationExpr = (ObjectCreationExpr) scopeExpression;
+			final ClassOrInterfaceType type = objectCreationExpr.getType();
+			final ClassOrInterfaceType typeScope = type.getScope();
+			if (typeScope == null)
+			{
+				scope = type.toString();
+			}
+			else
+			{
+				scope = typeScope.toString();
+			}
+		}
+		else if (scopeExpression.getClass().equals(SuperExpr.class))
+		{
+			scope = thisClassName;
+		}
+		else if (scopeExpression.getClass().equals(EnclosedExpr.class))
+		{
+			EnclosedExpr enclosedExpr = (EnclosedExpr) scopeExpression;
+			scope = evaluateScopeToString(enclosedExpr.getInner(), thisParent);
+		}
+		else if (scopeExpression.getClass().equals(StringLiteralExpr.class))
+		{
+			scope = "String";
+		}
+		else if (scopeExpression.getClass().equals(CastExpr.class))
+		{
+			CastExpr castExpression = (CastExpr) scopeExpression;
+			evaluateExpression(castExpression.getExpr(), thisParent);
+			scope = ((CastExpr) scopeExpression).getType().toString();
+		} else if (scopeExpression.getClass().equals(ArrayAccessExpr.class)) {
+			ArrayAccessExpr arrayAccessExpr = (ArrayAccessExpr) scopeExpression;
+			scope = arrayAccessExpr.getName().toString();
+		}
+		else
+		{
+			scope = ((NameExpr) scopeExpression).getName();
+		}
+		return scope;
 	}
 
 	private void visitVariableDeclarationExpr(VariableDeclarationExpr variableDeceleration, String thisParent)
 	{
-		String variableTypeName = "";
-		if (variableDeceleration.getType().getClass().equals(PrimitiveType.class))
-		{
-			PrimitiveType type = (PrimitiveType) variableDeceleration.getType();
-			variableTypeName = type.getType().toString();
-		}
-		else
-		{
-			ReferenceType type = (ReferenceType) variableDeceleration.getType();
-			variableTypeName = type.getType().toString();
-		}
-
-		String qualifiedClassName = null;
-		if (classNameToPackageName.containsKey(variableTypeName))
-		{
-			qualifiedClassName = classNameToPackageName.get(variableTypeName) + "." + variableTypeName;
-		}
-
-		// TODO: do we want function to class dependency ?
-		// addDepends(thisParent, qualifiedClassName);
-		for (VariableDeclarator variableDeclarator : variableDeceleration.getVars())
-		{
-			// LHS of the declaration
-			String variableName = variableDeclarator.getId().getName();
-			variableTypeMap.put(variableName, qualifiedClassName);
-
-			// RHS of the declaration
-			visitVariableDecelerator(variableDeclarator, thisParent);
-		}
-
+		System.out.println("i did nothing - " + variableDeceleration.toString());
 	}
 
 	private void visitParameter(Parameter parameter, String parent)
@@ -278,7 +482,9 @@ public class BodyVisitor extends Visitor
 		final String parameterClassType =
 		        classNameToPackageName.get(parameterType.toString()) + "." + parameterType.toString();
 		variableTypeMap.put(variableName, parameterClassType);
-		addDepends(parent, parameterClassType);
+
+		// TODO: lets not worry about function to Class dependency
+		// addDepends(parent, parameterClassType);
 	}
 
 	private void addDepends(String parent, String dependency)
@@ -306,7 +512,8 @@ public class BodyVisitor extends Visitor
 		}
 		String qualifiedClassName = typePackageName + "." + typeName;
 
-		addDepends(parent, qualifiedClassName);
+		// TODO: lets not worry about the fields
+		// addDepends(parent, qualifiedClassName);
 
 		// The field could declare multiple variables, put all into a map variableName -> itsClassType
 		for (VariableDeclarator variableDeclarator : field.getVariables())
@@ -316,7 +523,8 @@ public class BodyVisitor extends Visitor
 			variableTypeMap.put(variableName, qualifiedClassName);
 
 			// RHS of the declaration
-			visitVariableDecelerator(variableDeclarator, parent);
+			// TODO, not listing class to function dependencies
+			// visitVariableDecelerator(variableDeclarator, parent);
 
 		}
 
@@ -345,7 +553,7 @@ public class BodyVisitor extends Visitor
 				String className = classNameToPackageName.get(scope.toStringWithoutComments());
 				if (className == null)
 				{
-					className = variableTypeMap.get(className);
+					className = variableTypeMap.get(scope.toStringWithoutComments());
 				}
 				else
 				{
@@ -355,11 +563,13 @@ public class BodyVisitor extends Visitor
 			}
 			else if (scope != null && scope.getClass().equals(MethodCallExpr.class))
 			{
-				visitMethodCallExpression((MethodCallExpr) scope, parent);
+				evaluateExpression((MethodCallExpr) scope, parent);
 				scopeClassName =
 				        variableTypeMap.get(((MethodCallExpr) scope).getScope() + "."
 				                + ((MethodCallExpr) scope).getName());
-			} else {
+			}
+			else
+			{
 				scopeClassName = thisClassName;
 			}
 

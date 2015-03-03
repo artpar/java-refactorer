@@ -16,7 +16,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import com.codahale.metrics.annotation.Timed;
-import it.uniroma1.dis.wsngroup.gexf4j.core.Edge;
 import it.uniroma1.dis.wsngroup.gexf4j.core.EdgeType;
 import it.uniroma1.dis.wsngroup.gexf4j.core.Gexf;
 import it.uniroma1.dis.wsngroup.gexf4j.core.Graph;
@@ -58,7 +57,7 @@ public class HelloWorldResource
 		{
 			allMap.put(name, this.all);
 		}
-		return makeGraph(allMap.get(name).getRequiredBy(), allMap.get(name).getRequiredBy());
+		return makeGraph(allMap.get(name).getClassLevelRequireBy(), allMap.get(name).getClassLevelRequireBy());
 	}
 
 	@GET
@@ -72,13 +71,27 @@ public class HelloWorldResource
 	@GET
 	@Path ("getDependencyList")
 	@Produces (MediaType.TEXT_XML)
-	public String getDependencyList(@QueryParam ("config") String name) throws Exception
+	public String getDependencyList(@QueryParam ("config") String name, @QueryParam ("type") String type)
+	        throws Exception
 	{
 		if (!allMap.containsKey(name))
 		{
 			start(name);
 		}
-		return makeGraph(allMap.get(name).getDependencyList(), allMap.get(name).getRequiredBy());
+
+		final All allInstance = allMap.get(name);
+		if (type.equals("class"))
+		{
+			return makeGraph(allInstance.getClassLevelDependsOn(), allInstance.getClassLevelRequireBy());
+		}
+		else if (type.equals("function"))
+		{
+			return makeGraph(allInstance.getFunctionLevelDependsOn(), allInstance.getFunctionLevelRequireBy());
+		}
+		else
+		{
+			return makeGraph(allInstance.getClassLevelDependsOn(), allInstance.getClassLevelRequireBy());
+		}
 
 	}
 
@@ -90,7 +103,8 @@ public class HelloWorldResource
 		{
 			start(name);
 		}
-		return new Response("ok", makeGraph(allMap.get(name).getRequiredBy(), allMap.get(name).getRequiredBy()));
+		return new Response("ok", makeGraph(allMap.get(name).getClassLevelRequireBy(), allMap.get(name)
+		        .getClassLevelRequireBy()));
 	}
 
 	public String makeGraph(Map<String, List<String>> map1, Map<String, List<String>> map2) throws IOException
@@ -144,45 +158,48 @@ public class HelloWorldResource
 			}
 		}
 
-		for (String key : map2.keySet())
-		{
-			Node fromNode;
-			if (!keyToNode.containsKey(key))
-			{
-				fromNode = makeNode(graph, key);
-				keyToNode.put(key, fromNode);
-			}
-
-			fromNode = keyToNode.get(key);
-			List<String> toList = map1.get(key);
-			for (String toNodeName : toList)
-			{
-				Node toNode;
-				if (!keyToNode.containsKey(toNodeName))
-				{
-					toNode = makeNode(graph, toNodeName);
-					keyToNode.put(toNodeName, toNode);
-
-				}
-				toNode = keyToNode.get(toNodeName);
-
-				if (!fromNode.hasEdgeTo(toNode.getId()))
-				{
-					fromNode.connectTo(UUID.randomUUID().toString(), "required by", EdgeType.DIRECTED, toNode);
-				}
-				else
-				{
-					for (Edge edge : fromNode.getEdges())
-					{
-						if (edge.getTarget().equals(toNode))
-						{
-							edge.setLabel("depends and requires");
-							break;
-						}
-					}
-				}
-			}
-		}
+//		for (String key : map2.keySet())
+//		{
+//			Node fromNode;
+//			if (!keyToNode.containsKey(key))
+//			{
+//				fromNode = makeNode(graph, key);
+//				keyToNode.put(key, fromNode);
+//			}
+//
+//			fromNode = keyToNode.get(key);
+//			List<String> toList = map1.get(key);
+//			if (toList == null) {
+//				continue;
+//			}
+//			for (String toNodeName : toList)
+//			{
+//				Node toNode;
+//				if (!keyToNode.containsKey(toNodeName))
+//				{
+//					toNode = makeNode(graph, toNodeName);
+//					keyToNode.put(toNodeName, toNode);
+//
+//				}
+//				toNode = keyToNode.get(toNodeName);
+//
+//				if (!fromNode.hasEdgeTo(toNode.getId()))
+//				{
+//					fromNode.connectTo(UUID.randomUUID().toString(), "required by", EdgeType.DIRECTED, toNode);
+//				}
+//				else
+//				{
+//					for (Edge edge : fromNode.getEdges())
+//					{
+//						if (edge.getTarget().equals(toNode))
+//						{
+//							edge.setLabel("depends and requires");
+//							break;
+//						}
+//					}
+//				}
+//			}
+//		}
 
 		StaxGraphWriter graphWriter = new StaxGraphWriter();
 		StringWriter stringWriter = new StringWriter();

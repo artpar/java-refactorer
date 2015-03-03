@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+</head>
+<body>
+<div id="sigma-container" style="position:absolute; top:20px; left:0px; right:0px; bottom:0px;"></div>
+<script type="text/javascript" src="jscss/parser.js"></script>
+
+<script src="jscss/sigma.min.js"></script>
+<script src="jscss/sigma.parsers.gexf.min.js"></script>
+<script src="jscss/sigma.layout.forceAtlas2.min.js"></script>
+<script>
+    sigma.parsers.gexf(
+            '/ref/getDependencyList?config=core&type=function',
+            { // Here is the ID of the DOM element that
+                // will contain the graph:
+                container: 'sigma-container'
+            },
+            function(s) {
+                // This function will be executed when the
+                // graph is displayed, with "s" the related
+                // sigma instance.
+                s.startForceAtlas2({});
+            }
+    );
+</script>
+</body>
+</html>

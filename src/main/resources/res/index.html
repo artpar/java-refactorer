@@ -18,7 +18,7 @@
         REF.config = "";
     </script>
 </head>
-<body onload="loadGraph('/ref/getDependencyList?config=core')">
+<body onload="init()">
 <div id="vizcontainer" style="position:absolute; top:20px; left:0px; right:0px; bottom:0px;">
     <svg id="graphSVG" style="border:1px lightgray solid; width: 100%; height: 100%;">
         <g id="graphG"/>
@@ -33,46 +33,28 @@
 </div>
 </body>
 <script>
-    $(document).ready(function () {
-//        var name = window.prompt("config name");
-        var name = "core";
-        $.ajax({
-            url: REF.path,
-            data: {
-                config: name
-            },
-            method: "GET",
-            success: function (data) {
-                if (data.message == "ok") {
-                    REF.config = name;
-                    init(REF);
-                }
+    Refactaror = {};
+    function getUrlParameter(sParam) {
+        var sPageURL = window.location.search.substring(1);
+        var sURLVariables = sPageURL.split('&');
+        for (var i = 0; i < sURLVariables.length; i++) {
+            var sParameterName = sURLVariables[i].split('=');
+            if (sParameterName[0] == sParam) {
+                return sParameterName[1];
             }
-        })
-    });
-
-    function init(CONFIG) {
-        $.ajax({
-            url: CONFIG.path + "/getDependencyList",
-            method: "GET",
-            data: {
-                config: CONFIG.config
-            },
-            success: function (response) {
-                if (response.message == "ok") {
-                    drawDependencyGraph(response.data);
-                }
-            }
-        });
+        }
     }
-    function drawDependencyGraph(data) {
-        var container = $("#visualization")[0];
-        var network = new vis.Network(container, data, {});
-        console.log(network)
+
+    function init() {
+        var configName = getUrlParameter("config");
+        var configType = getUrlParameter("type");
+        Refactaror.highlight = getUrlParameter("highlight");
+        loadGraph('/ref/getDependencyList?config=' + configName + "&type=" + configType)
     }
 
 
     nodeFocus = false;
+    Refactaror.highlighedNodes = [];
     currentBrush = [0, 0];
     docHash = {};
     allLinks = [];
@@ -88,7 +70,7 @@
                 .linkDistance(200)
                 .size([1000, 1000])
                 .gravity(.1)
-                .on("tick", redrawGraph)
+                .on("tick", redrawGraph);
 
         zoom = d3.behavior.zoom()
                 .scaleExtent([.1, 10])
@@ -103,36 +85,74 @@
 
     }
 
-    function highlightNeighbors(d, i) {
+    function startHighlight(d, i) {
+        if (Refactaror.highlighedNodes.indexOf(d) > -1) {
+            return;
+        }
+
+//        console.log("High light node ", d);
         var nodeNeighbors = findNeighbors(d, i);
+        for (var ii = 0; ii < nodeNeighbors.links.length; ii++) {
+            d.isHighlighted = true;
+            if (nodeNeighbors.links[ii].source == d) {
+                linkColorMap[nodeNeighbors.links[ii].id] = "green";
+            } else {
+                linkColorMap[nodeNeighbors.links[ii].id] = "red";
+            }
+        }
+
+        for (var ii = 0; ii < nodeNeighbors.nodes.length; ii++) {
+            nodeHighlighMap[nodeNeighbors.nodes[ii].id] = true;
+        }
+
+
+
+        Refactaror.highlighedNodes.push(d);
         d3.selectAll("g.node").each(function (p) {
-            var isNeighbor = nodeNeighbors.nodes.indexOf(p);
+            var isNeighbor = nodeHighlighMap[p.id];
+            if (isNeighbor) {
+                startHighlight(p, i);
+            }
             d3.select(this).select("circle")
                     .style("opacity", isNeighbor > -1 ? 1 : .25)
                     .style("stroke-width", isNeighbor > -1 ? 3 : 1)
-                    .style("stroke", isNeighbor > -1 ? "blue" : "white")
-        })
+                    .style("stroke", isNeighbor > -1 ? "blue" : "white");
+            d3.select(this).append("text")
+                    .attr("class", isNeighbor > -1 ? "hoverLabel" : "")
+                    .style("pointer-events", isNeighbor > -1 ? "none" : "")
+                    .text(isNeighbor > -1 ? p.label : "");
+        });
 
         d3.selectAll("line.link")
                 .style("stroke-width", function (d) {
-                    return nodeNeighbors.links.indexOf(d) > -1 ? 2 : 1
+                    return Object.keys(linkColorMap).indexOf(d.id.toString()) > -1 ? 2 : 1;
                 })
                 .style("opacity", function (d) {
-                    return nodeNeighbors.links.indexOf(d) > -1 ? 1 : .25
+                    return Object.keys(linkColorMap).indexOf(d.id.toString()) > -1 ? 1 : .25 ;
                 })
+                .style("stroke", function (d) {
+                    return Object.keys(linkColorMap).indexOf(d.id.toString()) > -1 ? linkColorMap[d.id] : "black";
+                })
+    }
+    var linkColorMap = {};
+    var nodeHighlighMap = {};
+    function highlightNeighbors(d, i) {
+        linkColorMap = {};
+        nodeHighlighMap = {};
+        startHighlight(d, i);
+
     }
 
     function findNeighbors(d, i) {
-        neighborArray = [d];
+        var neighborArray = [d];
         var linkArray = [];
-        var linksArray = d3.selectAll("line.link").filter(function (p) {
+        d3.selectAll("line.link").filter(function (p) {
             return p.source == d || p.target == d
         }).each(function (p) {
             neighborArray.indexOf(p.source) == -1 ? neighborArray.push(p.source) : null;
             neighborArray.indexOf(p.target) == -1 ? neighborArray.push(p.target) : null;
             linkArray.push(p);
-        })
-//        neighborArray = d3.set(neighborArray).keys();
+        });
         return {nodes: neighborArray, links: linkArray};
     }
 
@@ -260,7 +280,7 @@
             forceRunning = true;
         }
 
-        d3.select("#graphG").selectAll("line.link")
+        var svg = d3.select("#graphG").selectAll("line.link")
                 .data(gD3.links(), function (d) {
                     return d.id
                 })
@@ -281,7 +301,8 @@
                 })
                 .style("stroke", "black")
                 .style("stroke-width", "1px")
-                .style("opacity", .25)
+                .style("opacity", .25);
+
 
         d3.select("#graphG").selectAll("g.node").data(gD3.nodes(), function (d) {
             return d.id
@@ -319,6 +340,7 @@
                 return;
             }
             //Only do the element stuff if this came from mouseover
+            if (el.parentNode)
             el.parentNode.appendChild(el);
             d3.select(el).append("text").attr("class", "hoverLabel").attr("stroke", "white").attr("stroke-width", "5px")
                     .style("opacity", .9)
@@ -359,7 +381,7 @@
         if (nodeFocus) {
             return;
         }
-
+        Refactaror.highlighedNodes = [];
         d3.selectAll(".hoverLabel").remove();
         d3.selectAll("circle").style("opacity", 1).style("stroke", "black").style("stroke-width", "1px");
         d3.selectAll("line").style("opacity", .25);

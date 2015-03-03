@@ -22,6 +22,7 @@ public class MethodVisitor extends Visitor
 	private String packageName;
 	private String className;
 	private Map<String, String> methodToReturnType = new HashMap<String, String>();
+	private List<String> classes = new LinkedList<String>();
 
 	public void visit(PackageDeclaration n)
 	{
@@ -50,6 +51,10 @@ public class MethodVisitor extends Visitor
 		for (TypeDeclaration typeDeclaration : cu.getTypes())
 		{
 			className = typeDeclaration.getName();
+			classes.add(packageName + "." + className);
+			if (typeDeclaration.getMembers() == null) {
+				continue;
+			}
 			for (BodyDeclaration bodyDeclaration : typeDeclaration.getMembers())
 			{
 				if (bodyDeclaration.getClass().equals(MethodDeclaration.class))
@@ -57,21 +62,6 @@ public class MethodVisitor extends Visitor
 					visit((MethodDeclaration) bodyDeclaration);
 				}
 			}
-
-			// if (typeDeclaration.getClass().equals(ClassOrInterfaceDeclaration.class))
-			// {
-			// final ClassOrInterfaceDeclaration classOrInterface = (ClassOrInterfaceDeclaration) typeDeclaration;
-			// visit(classOrInterface);
-			// for (BodyDeclaration bodyDeclaration : classOrInterface.getMembers())
-			// {
-			// if ()
-			// }
-			//
-			// }
-			// else if (typeDeclaration.getClass().equals(EnumDeclaration.class))
-			// {
-			// visit((EnumDeclaration) typeDeclaration);
-			// }
 		}
 
 	}
@@ -79,5 +69,9 @@ public class MethodVisitor extends Visitor
 	public Map<String, String> getMethodToReturnType()
 	{
 		return methodToReturnType;
+	}
+
+	public List<String> getClasses() {
+		return classes;
 	}
 }
