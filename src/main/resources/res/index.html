@@ -34,6 +34,7 @@
 </body>
 <script>
     Refactaror = {};
+    Refactaror.highlightLevel = 3;
     function getUrlParameter(sParam) {
         var sPageURL = window.location.search.substring(1);
         var sURLVariables = sPageURL.split('&');
@@ -85,10 +86,11 @@
 
     }
 
-    function startHighlight(d, i) {
-        if (Refactaror.highlighedNodes.indexOf(d) > -1) {
+    function startHighlight(d, i, level) {
+        if (Refactaror.highlighedNodes.indexOf(d) > -1 || level >= Refactaror.highlightLevel) {
             return;
         }
+        console.log("level ", level);
 
 //        console.log("High light node ", d);
         var nodeNeighbors = findNeighbors(d, i);
@@ -111,7 +113,7 @@
         d3.selectAll("g.node").each(function (p) {
             var isNeighbor = nodeHighlighMap[p.id];
             if (isNeighbor) {
-                startHighlight(p, i);
+                startHighlight(p, i, level+1);
             }
             d3.select(this).select("circle")
                     .style("opacity", isNeighbor > -1 ? 1 : .25)
@@ -139,7 +141,9 @@
     function highlightNeighbors(d, i) {
         linkColorMap = {};
         nodeHighlighMap = {};
-        startHighlight(d, i);
+        console.log("start highlight")
+        startHighlight(d, i, 0);
+        console.log("end highlight")
 
     }
 

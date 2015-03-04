@@ -291,7 +291,7 @@ public class BodyVisitor extends Visitor
 			addDepends(thisParent, fullyQualifiedMethodCall);
 			variableTypeMap.put(fullyQualifiedMethodCall, methodReturnTypeMap.get(fullyQualifiedMethodCall));
 			variableTypeMap.put(expression.getScope() + "." + expression.getName(),
-					methodReturnTypeMap.get(fullyQualifiedMethodCall));
+			        methodReturnTypeMap.get(fullyQualifiedMethodCall));
 		}
 		else if (originalExpressionClass.equals(BinaryExpr.class))
 		{
@@ -452,7 +452,9 @@ public class BodyVisitor extends Visitor
 			CastExpr castExpression = (CastExpr) scopeExpression;
 			evaluateExpression(castExpression.getExpr(), thisParent);
 			scope = ((CastExpr) scopeExpression).getType().toString();
-		} else if (scopeExpression.getClass().equals(ArrayAccessExpr.class)) {
+		}
+		else if (scopeExpression.getClass().equals(ArrayAccessExpr.class))
+		{
 			ArrayAccessExpr arrayAccessExpr = (ArrayAccessExpr) scopeExpression;
 			scope = arrayAccessExpr.getName().toString();
 		}
@@ -476,6 +478,16 @@ public class BodyVisitor extends Visitor
 		if (!classNameToPackageName.containsKey(parameterType.toString()))
 		{
 			return;
+		}
+		else if (((ClassOrInterfaceType) ((ReferenceType) parameterType).getType()).getName().equals("List"))
+		{
+			List<Type> args = ((ClassOrInterfaceType) ((ReferenceType) parameterType).getType()).getTypeArgs();
+		}
+		else if (((ClassOrInterfaceType) ((ReferenceType) parameterType).getType()).getTypeArgs() != null
+		        && ((ClassOrInterfaceType) ((ReferenceType) parameterType).getType()).getTypeArgs().size() > 0)
+		{
+			System.out.println("This type has arguments, how to deal with this - " + parameterType.toString());
+
 		}
 
 		String variableName = parameter.getId().getName();

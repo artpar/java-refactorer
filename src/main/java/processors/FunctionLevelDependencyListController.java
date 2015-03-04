@@ -35,7 +35,7 @@ public class FunctionLevelDependencyListController extends Processor
 		classesExplored = new LinkedList<String>();
 		for (Module m : config.getModules().values())
 		{
-			getMethodReturnTypeMap(m.getPath());
+			getMethodReturnTypeMap(m);
 		}
 		for (Module m : config.getModules().values())
 		{
@@ -134,9 +134,9 @@ public class FunctionLevelDependencyListController extends Processor
 
 	}
 
-	private void getMethodReturnTypeMap(String modulePath)
+	private void getMethodReturnTypeMap(Module modulePath)
 	{
-		Iterator<File> files = getJavaFilesIterator(modulePath);
+		Iterator<File> files = getJavaFilesIterator(modulePath.getPath());
 		while (files.hasNext())
 		{
 			File file = files.next();
