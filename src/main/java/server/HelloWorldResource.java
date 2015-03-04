@@ -4,10 +4,8 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.util.Calendar;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.ws.rs.GET;
@@ -16,17 +14,10 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import com.codahale.metrics.annotation.Timed;
-import it.uniroma1.dis.wsngroup.gexf4j.core.EdgeType;
 import it.uniroma1.dis.wsngroup.gexf4j.core.Gexf;
 import it.uniroma1.dis.wsngroup.gexf4j.core.Graph;
-import it.uniroma1.dis.wsngroup.gexf4j.core.Mode;
 import it.uniroma1.dis.wsngroup.gexf4j.core.Node;
-import it.uniroma1.dis.wsngroup.gexf4j.core.data.AttributeClass;
-import it.uniroma1.dis.wsngroup.gexf4j.core.data.AttributeList;
-import it.uniroma1.dis.wsngroup.gexf4j.core.dynamic.TimeFormat;
-import it.uniroma1.dis.wsngroup.gexf4j.core.impl.GexfImpl;
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter;
-import it.uniroma1.dis.wsngroup.gexf4j.core.impl.data.AttributeListImpl;
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.viz.ColorImpl;
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.viz.PositionImpl;
 import refac.All;
@@ -57,14 +48,24 @@ public class HelloWorldResource
 		{
 			allMap.put(name, this.all);
 		}
-		return makeGraph(allMap.get(name).getClassLevelRequireBy(), allMap.get(name).getClassLevelRequireBy());
+		return makeGraph(this.all.getFunctionLevelDependsOn());
 	}
 
 	@GET
 	@Path ("test")
-	public String test()
+	public String test(@QueryParam ("jar") String jarName) throws Exception
 	{
-		all.test();
+		All tempAll;
+		if (!allMap.containsKey(jarName))
+		{
+			tempAll = new All(configFile);
+			allMap.put(jarName, tempAll);
+		}
+		else
+		{
+			tempAll = allMap.get(jarName);
+		}
+		tempAll.test(jarName);
 		return "ok";
 	}
 
@@ -82,124 +83,21 @@ public class HelloWorldResource
 		final All allInstance = allMap.get(name);
 		if (type.equals("class"))
 		{
-			return makeGraph(allInstance.getClassLevelDependsOn(), allInstance.getClassLevelRequireBy());
+			return makeGraph(allInstance.getFunctionLevelDependsOn());
 		}
 		else if (type.equals("function"))
 		{
-			return makeGraph(allInstance.getFunctionLevelDependsOn(), allInstance.getFunctionLevelRequireBy());
+			return makeGraph(allInstance.getFunctionLevelDependsOn());
 		}
 		else
 		{
-			return makeGraph(allInstance.getClassLevelDependsOn(), allInstance.getClassLevelRequireBy());
+			return makeGraph(allInstance.getFunctionLevelDependsOn());
 		}
 
 	}
 
-	@GET
-	@Path ("getRequiredByList")
-	public Response getRequiredByList(@QueryParam ("config") String name) throws Exception
+	public String makeGraph(Gexf gexf) throws IOException
 	{
-		if (!allMap.containsKey(name))
-		{
-			start(name);
-		}
-		return new Response("ok", makeGraph(allMap.get(name).getClassLevelRequireBy(), allMap.get(name)
-		        .getClassLevelRequireBy()));
-	}
-
-	public String makeGraph(Map<String, List<String>> map1, Map<String, List<String>> map2) throws IOException
-	{
-		Gexf gexf = new GexfImpl();
-
-		gexf.setVisualization(true);
-		// gexf.setVariant()
-		Calendar date = Calendar.getInstance();
-		date.set(2012, 4, 03);
-		// date.setTimeZone(TimeZone.getTimeZone("GMT+0300"));
-		gexf.getMetadata().setLastModified(date.getTime()).setCreator("Gephi.org").setDescription("A Web network");
-
-		Graph graph = gexf.getGraph();
-		graph.setDefaultEdgeType(EdgeType.DIRECTED).setMode(Mode.DYNAMIC).setTimeType(TimeFormat.XSDDATETIME);
-
-		AttributeList attrList = new AttributeListImpl(AttributeClass.NODE);
-		graph.getAttributeLists().add(attrList);
-
-		// ObservableGraph<String, String> jGraph = new ObservableGraph<String, String>();
-
-		Map<String, Node> keyToNode = new HashMap<String, Node>();
-		i = 1;
-
-		for (String key : map1.keySet())
-		{
-			Node fromNode;
-			if (!keyToNode.containsKey(key))
-			{
-				fromNode = makeNode(graph, key);
-				keyToNode.put(key, fromNode);
-			}
-
-			fromNode = keyToNode.get(key);
-			List<String> toList = map1.get(key);
-			for (String toNodeName : toList)
-			{
-				Node toNode;
-				if (!keyToNode.containsKey(toNodeName))
-				{
-					toNode = makeNode(graph, toNodeName);
-					keyToNode.put(toNodeName, toNode);
-
-				}
-				toNode = keyToNode.get(toNodeName);
-				if (!fromNode.hasEdgeTo(toNode.getId()))
-				{
-
-					fromNode.connectTo(UUID.randomUUID().toString(), "depends on", EdgeType.DIRECTED, toNode);
-				}
-			}
-		}
-
-//		for (String key : map2.keySet())
-//		{
-//			Node fromNode;
-//			if (!keyToNode.containsKey(key))
-//			{
-//				fromNode = makeNode(graph, key);
-//				keyToNode.put(key, fromNode);
-//			}
-//
-//			fromNode = keyToNode.get(key);
-//			List<String> toList = map1.get(key);
-//			if (toList == null) {
-//				continue;
-//			}
-//			for (String toNodeName : toList)
-//			{
-//				Node toNode;
-//				if (!keyToNode.containsKey(toNodeName))
-//				{
-//					toNode = makeNode(graph, toNodeName);
-//					keyToNode.put(toNodeName, toNode);
-//
-//				}
-//				toNode = keyToNode.get(toNodeName);
-//
-//				if (!fromNode.hasEdgeTo(toNode.getId()))
-//				{
-//					fromNode.connectTo(UUID.randomUUID().toString(), "required by", EdgeType.DIRECTED, toNode);
-//				}
-//				else
-//				{
-//					for (Edge edge : fromNode.getEdges())
-//					{
-//						if (edge.getTarget().equals(toNode))
-//						{
-//							edge.setLabel("depends and requires");
-//							break;
-//						}
-//					}
-//				}
-//			}
-//		}
 
 		StaxGraphWriter graphWriter = new StaxGraphWriter();
 		StringWriter stringWriter = new StringWriter();
