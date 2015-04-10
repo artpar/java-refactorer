@@ -1,0 +1,7 @@
+{
+  "jar": "utils.jar",
+  "mainClass": [
+    "com.flipkart.TestMainClass"
+  ],
+  "exclusionFile": "Java60RegressionExclusions.txt"
+}

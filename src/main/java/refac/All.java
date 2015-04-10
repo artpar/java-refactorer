@@ -62,8 +62,8 @@ public class All
 	        "context");
 	private static final AttributeImpl CLASS_TYPE = new AttributeImpl(UUID.randomUUID().toString(),
 	        AttributeType.STRING, "class_type");
-	private static final AttributeImpl CLASS = new AttributeImpl(UUID.randomUUID().toString(),
-	        AttributeType.STRING, "class");
+	private static final AttributeImpl CLASS = new AttributeImpl(UUID.randomUUID().toString(), AttributeType.STRING,
+	        "class");
 	public static final String COM_FLIPKART = "Lcom/flipkart";
 	private final Configuration config;
 	private final All AllRef;
@@ -124,9 +124,9 @@ public class All
 		return projectList.get(name);
 	}
 
-	public String test(final String jarName)
+	public String test(final String jarName) throws InterruptedException
 	{
-		new Thread(new Runnable()
+		Thread thread = new Thread(new Runnable()
 		{
 
 			@Override
@@ -134,9 +134,7 @@ public class All
 			{
 				try
 				{
-					g =
-					        buildPrunedCallGraph(jarName,
-					                (new FileProvider()).getFile("Java60RegressionExclusions.txt"));
+					g = buildPrunedCallGraph(jarName, (new FileProvider()).getFile("Java60RegressionExclusions.txt"));
 				}
 				catch (WalaException e)
 				{
@@ -151,7 +149,9 @@ public class All
 					e.printStackTrace();
 				}
 			}
-		}).start();
+		});
+		thread.start();
+		thread.join();
 		return "ok";
 	}
 
@@ -326,7 +326,8 @@ public class All
 
 	private <T> Node getPort(CGNode n, it.uniroma1.dis.wsngroup.gexf4j.core.Graph graph) throws WalaException
 	{
-		final String label = n.getIR().getMethod().getDeclaringClass().getName() + "." + n.getIR().getMethod().getName().toString();
+		final String label =
+		        n.getIR().getMethod().getDeclaringClass().getName() + "." + n.getIR().getMethod().getName().toString();
 		if (!label.startsWith(COM_FLIPKART) || n.getMethod().isPrivate() || n.getMethod().isProtected())
 		{
 			final NodeImpl dummyNode = new NodeImpl("123");
